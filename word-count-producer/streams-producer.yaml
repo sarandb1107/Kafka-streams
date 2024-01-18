@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kafka-producer
+  namespace: streams
+spec:
+  serviceName: "kafka-producer-service"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka-producer
+  template:
+    metadata:
+      labels:
+        app: kafka-producer
+    spec:
+      containers:
+      - name: kafka-producer
+        image: sarandb/word-count-producer:last1
+        env:
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          value: kafka.streams.svc.cluster.local:9092
+        resources:
+          requests:
+            memory: 512Mi
+            cpu: 500m
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-producer-service
+  namespace: streams
+spec:
+  clusterIP: None
+  selector:
+    app: kafka-producer

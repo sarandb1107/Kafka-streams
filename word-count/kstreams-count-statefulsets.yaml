@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: Service
+metadata:
+    name: kstreams-count-service
+    namespace: streams
+spec:
+    clusterIP: None
+    selector:
+        app: kstreams-count
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+    name: kstreams-count
+    namespace: streams
+spec:
+    serviceName: "kstreams-count-service"
+    replicas: 2
+    selector:
+      matchLabels:
+        app: kstreams-count
+    template:
+      metadata:
+        labels:
+          app: kstreams-count
+      spec:
+        containers:
+        - name: kstreams-count
+          image: sarandb/word-count:last1
+          env:
+          - name: KAFKA_STREAMS_APPLICATION_ID
+            value: wordcount-application
+          - name: KAFKA_STREAMS_BOOTSTRAP_SERVERS
+            value: kafka.streams.svc.cluster.local:9092
+          - name: KAFKA_CONSUMER_CONFIG_AUTO_OFFSET_RESET
+            value: earliest
+          - name: KAFKA_PRODUCER_CONFIG_ACKS
+            value: all
+          - name: KAFKA_PRODUCER_CONFIG_RETRIES_CONFIG
+            value: "3"
+          - name: KAFKA_PRODUCER_CONFIG_KEY_SERIALIZER_CLASS
+            value: org.apache.kafka.common.serialization.Serdes$StringSerde
+          - name: KAFKA_PRODUCER_CONFIG_VALUE_SERIALIZER_CLASS
+            value: org.apache.kafka.common.serialization.Serdes$LongSerde
+          - name: KAFKA_CONSUMER_CONFIG_GROUP_ID
+            value: my-kafka-streams-consumer-group
+          volumeMounts:
+          - name: count-store
+            mountPath: /data/count-store
+            readOnly: true
+          resources:
+            requests:
+              memory: 512Mi
+              cpu: 500m
+        volumes:
+        - name: count-store
+          persistentVolumeClaim:
+            claimName: count-store
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+    name: count-store
+    namespace: streams
+spec:
+    accessModes:
+    - ReadWriteOnce
+    resources:
+        requests:
+            storage: 1Gi
